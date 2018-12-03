@@ -1,0 +1,96 @@
+service:
+  name: dynamodb-on-demand-backup
+
+##
+# ENVs and Configurations
+##
+custom:
+  NODE_ENV: ${file(./env.yml):${self:provider.stage}.NODE_ENV}
+  BACKUP_SCHEDULE: ${file(./env.yml):${self:provider.stage}.BACKUP_SCHEDULE}
+  BACKUP_MIN_COUNT: ${file(./env.yml):${self:provider.stage}.BACKUP_MIN_COUNT}
+  BACKUP_RETENTION: ${file(./env.yml):${self:provider.stage}.BACKUP_RETENTION}
+  TABLES: "User,Blog,Comment"
+
+##
+# Provider
+##
+provider:
+  name: aws
+  runtime: nodejs8.10
+
+  stage: ${opt:stage, "dev"}
+  region: ap-northeast-1
+
+  environment:
+    NODE_ENV: ${self:custom.NODE_ENV}
+
+##
+# Excludes
+##
+package:
+  exclude:
+    - .env
+    - env.yml
+    - package.json
+    - package-lock.json
+
+##
+# Functions
+##
+functions:
+
+  # DynamoDB On Demand Backup
+  dynamodbOnDemandBackup:
+    handler: handler.dynamodbOnDemandBackup
+    name: ${self:provider.stage}DynamodbOnDemandBackup
+    description: DynamoDB on demand backup script
+    timeout: 60
+    memorySize: 128
+    environment:
+      NODE_ENV: ${self:custom.NODE_ENV}
+      TABLES: ${self:custom.TABLES}
+      BACKUP_RETENTION: ${self:custom.BACKUP_RETENTION}
+      BACKUP_MIN_COUNT: ${self:custom.BACKUP_MIN_COUNT}
+    events:
+      - schedule: ${self:custom.BACKUP_SCHEDULE}
+        name: dynamodb-on-demand-backup
+        description: "DynamoDB on demand backup cron event trigger"
+        enabled: true
+    role: DynamodbBackupRole
+
+##
+# Resources
+##
+resources:
+  Resources:
+
+  ## Roles
+
+    # DynamoDB Backup Role
+    DynamodbBackupRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:provider.stage}DynamodbBackupRole
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: DynamodbBackupRole
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:ListBackups
+                    - dynamodb:DescribeBackup
+                    - dynamodb:CreateBackup
+                    - dynamodb:DeleteBackup
+                  Resource: "*"
