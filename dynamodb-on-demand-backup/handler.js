@@ -43,7 +43,7 @@ const createBackup = async (tableName) => {
     BackupName: `Scheduled_${Date.now()}`,
     TableName: tableName,
   };
-  return await dynamo.createBackup(params).promise();
+  return dynamo.createBackup(params).promise();
 };
 
 
@@ -77,7 +77,7 @@ const listOutdatedBackups = async (tableName, exclusiveStartBackupArn = '') => {
 
   if (exclusiveStartBackupArn !== '') Object.assign(params, exclusiveStartBackupArn);
 
-  return await dynamo.listBackups(params).promise();
+  return dynamo.listBackups(params).promise();
 };
 
 /**
@@ -90,7 +90,7 @@ const deleteOutdatedBackups = async (backups) => {
     const arn = backupSummary.BackupArn;
     const params = {BackupArn: arn};
     console.log(`[${backupSummary.TableName}] backup deleted: ${arn}`);
-    return await dynamo.deleteBackup(params).promise();
+    return dynamo.deleteBackup(params).promise();
   }));
 };
 
@@ -139,3 +139,4 @@ export const dynamodbOnDemandBackup = async (event, context, callback) => {
     callback(error, 'ERROR');
   }
 };
+
