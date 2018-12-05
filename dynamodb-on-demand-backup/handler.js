@@ -1,4 +1,6 @@
-import {DynamoDB} from 'aws-sdk';
+'use strict';
+
+const DynamoDB = require('aws-sdk').DynamoDB;
 
 // Configurations
 const BACKUP_TABLES = process.env.TABLES.split(',');
@@ -38,7 +40,7 @@ const getOutdatedBoundary = () => {
  * @param {string} tableName
  * @return {Promise<DynamoDB.CreateBackupOutput>}
  */
-const createBackup = async (tableName) => {
+const createBackup = (tableName) => {
   const params = {
     BackupName: `Scheduled_${Date.now()}`,
     TableName: tableName,
@@ -69,7 +71,7 @@ const getRecentBackupCount = async (tableName) => {
  * @param {string} exclusiveStartBackupArn?
  * @return {Promise<DynamoDB.ListBackupsOutput>}
  */
-const listOutdatedBackups = async (tableName, exclusiveStartBackupArn = '') => {
+const listOutdatedBackups = (tableName, exclusiveStartBackupArn = '') => {
   const params = {
     TableName: tableName,
     TimeRangeUpperBound: getOutdatedBoundary(),
@@ -101,7 +103,7 @@ const deleteOutdatedBackups = async (backups) => {
  * @param {Callback} callback
  * @return {Promise<void>}
  */
-export const dynamodbOnDemandBackup = async (event, context, callback) => {
+exports.dynamodbOnDemandBackup = async (event, context, callback) => {
   console.log(`[${new Date().toLocaleString('ja-JP')}] BACKUP START`);
   try {
     await Promise.all(BACKUP_TABLES.map(async (tableName) => {
@@ -139,4 +141,3 @@ export const dynamodbOnDemandBackup = async (event, context, callback) => {
     callback(error, 'ERROR');
   }
 };
-
